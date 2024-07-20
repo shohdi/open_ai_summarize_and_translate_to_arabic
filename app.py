@@ -10,6 +10,7 @@ from PIL import Image
 import base64
 import json
 import io
+import re
 
 
 
@@ -144,7 +145,7 @@ def getImagesFromFile(file):
 def summarize_text_by_image(file):
     imagePaths= getImagesFromFile(file)
     content=[{"type":"text"
-              ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , the text to summarize is in the images provided"}]
+              ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , show the arabic summarized text between <arabic> and </arabic> , the text to summarize is in the images provided"}]
     content.extend(imagePaths)
     
     
@@ -157,9 +158,21 @@ def summarize_text_by_image(file):
         max_tokens=10000  # You can adjust the max tokens as needed
     )
     summary = response['choices'][0]['message']['content']
+    pattern = r'<arabic>(.*?)</arabic>'
+
+    # Search for the pattern in the text
+    match = re.search(pattern, summary)
+
+    if match:
+        # Extract the content between the tags
+        summary = match.group(1)
+        print(summary)
+    else:
+        print("No content found between <arabic> and </arabic> tags.")
+        summary = ' '
     return summary
     
-    return "test summary"
+    
 
 class SummarizePDF(Resource):
     def post(self):
