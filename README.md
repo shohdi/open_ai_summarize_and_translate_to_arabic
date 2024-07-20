@@ -16,6 +16,8 @@ openai_key= {
     'key':'*************************************'
 }
 </code>
+also to use image version in pdfByImage.html you will need XpdfReader to be installed and available in path variable
+
 
 
 
