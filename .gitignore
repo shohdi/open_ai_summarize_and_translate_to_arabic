@@ -162,3 +162,6 @@ cython_debug/
 #.idea/
 
 /security
+/data
+
+.DS_Store
