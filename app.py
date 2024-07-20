@@ -52,12 +52,20 @@ def image_to_base64_json(image):
     image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         
     # Create JSON object
-    json_object = json.dumps({"image_base64": image_base64})
+    
+    json_object = {
+          "type": "image_url",
+          "image_url": {
+            "url": f"data:image/jpeg;base64,{image_base64}"
+            ,"detail": "high"
+          }
+    }
         
     return json_object
 
 
 def getImagesFromFile(file):
+    ret=[]
     # Ensure the 'data' directory exists
     base_path = os.path.dirname(os.path.realpath(__file__))
     data_folder = os.path.join(base_path, 'data')
@@ -102,6 +110,7 @@ def getImagesFromFile(file):
             # Open the .ppm image
             imageName = os.path.join(extFullPath,image)
             newJpgPath = os.path.join(extFullPath,'jpg')
+            os.makedirs(newJpgPath, exist_ok=True)
             newImageName = os.path.join(newJpgPath,image + '.jpg')
             print(imageName)
             print(newImageName)
@@ -125,27 +134,31 @@ def getImagesFromFile(file):
             resized_image = input_image.resize((width, height))
             # Save the image as .jpg
             resized_image.save(newImageName, format="JPEG")
+            jsonImage = image_to_base64_json(resized_image)
+            ret.append(jsonImage)
             
-
-            
-    return []
+    return ret
     
 
 
 def summarize_text_by_image(file):
     imagePaths= getImagesFromFile(file)
-    '''
+    content=[{"type":"text"
+              ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , the text to summarize is in the images provided"}]
+    content.extend(imagePaths)
+    
+    
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",  # or use "gpt-3.5-turbo"
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"Please summarize the following technical text for normal non-technical person and show the output in arabic , the text to summarize :\n\n{text}"}
+            {"role": "user", "content": content}
         ],
         max_tokens=10000  # You can adjust the max tokens as needed
     )
     summary = response['choices'][0]['message']['content']
     return summary
-    '''
+    
     return "test summary"
 
 class SummarizePDF(Resource):
