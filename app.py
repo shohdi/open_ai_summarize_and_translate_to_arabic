@@ -11,6 +11,8 @@ import base64
 import json
 import io
 import re
+import time
+import subprocess
 
 
 
@@ -29,17 +31,30 @@ def extract_text_from_pdf(file):
         text += page.extract_text()
     return text
 
-def summarize_text(text):
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",  # or use "gpt-3.5-turbo"
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"Please summarize the following technical text for normal non-technical person and show the output in arabic , the text to summarize :\n\n{text}"}
-        ],
-        max_tokens=10000  # You can adjust the max tokens as needed
-    )
-    summary = response['choices'][0]['message']['content']
+def handleArabicTagsToSummary(text):
+    pattern = r'<arabic>([^<]+)</arabic>'
+
+    # Search for the pattern in the text
+    match = re.search(pattern, text)
+
+    if match:
+        # Extract the content between the tags
+        summary = match.group(1)
+        print(summary)
+    else:
+        print("No content found between <arabic> and </arabic> tags.")
+        summary = ' '
+    
     return summary
+
+def summarize_text(text):
+    content = f"Please summarize the following technical text for normal non-technical person and show the output in arabic , The arabic summarized text should include all information found in the main text , show the arabic summarized text between <arabic> and </arabic>  , the text to summarize :\n\n{text}"
+
+    response = callChatgpt(content)
+    summary = response['choices'][0]['message']['content']
+    summary = handleArabicTagsToSummary(summary)
+    return summary
+    
 
 def image_to_base64_json(image):
     # Open the image file
@@ -89,14 +104,27 @@ def getImagesFromFile(file):
     
         
     print('start converting pdf to images in ',extFullPath + os.path.sep)
-    cmdLine = 'pdftoppm '
+    command = []
+    command.append('pdftoppm')
+    command.append(pdf_file)
+    command.append( extFullPath + os.path.sep )
+    result = subprocess.run(command, capture_output=True, text=True)
+    output = ''
+    if result.returncode == 0:
+        output = result.stdout
+    else:
+        output = result.stderr
+        
+
+    #cmdLine = 'pdftoppm '
     #cmdLine = cmdLine + '-l ' + str(lastPage) + ' '
-    cmdLine = cmdLine  +'"' +pdf_file+'"' + ' '
-    cmdLine = cmdLine  + '"' + extFullPath + os.path.sep + '"'
+    #cmdLine = cmdLine  +'"' +pdf_file+'"' + ' '
+    #cmdLine = cmdLine  + '"' + extFullPath + os.path.sep + '"'
 
 
-    stream = os.popen(cmdLine)
-    output = stream.read()
+    #stream = os.popen(cmdLine)
+    #output = stream.read()
+    
     if "error" in output.lower():
         raise Exception(output)
     
@@ -140,36 +168,51 @@ def getImagesFromFile(file):
             
     return ret
     
+def callChatgpt(content):
+    error = 'Rate limit'
+    response = None
+    while error is not None:
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",  # or use "gpt-3.5-turbo"
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=10000  # You can adjust the max tokens as needed
+            )
+            return response
+        except Exception as e:
+            # Convert the exception to a string
+            error = str(e)
+            if 'Rate limit' in error:
+                time.sleep(65)
+    
+    return response
+
+        
+    
+
+
+        
 
 
 def summarize_text_by_image(file):
-    imagePaths= getImagesFromFile(file)
-    content=[{"type":"text"
-              ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , show the arabic summarized text between <arabic> and </arabic> , the text to summarize is in the images provided"}]
-    content.extend(imagePaths)
-    
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",  # or use "gpt-3.5-turbo"
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": content}
-        ],
-        max_tokens=10000  # You can adjust the max tokens as needed
-    )
-    summary = response['choices'][0]['message']['content']
-    pattern = r'<arabic>(.*?)</arabic>'
-
-    # Search for the pattern in the text
-    match = re.search(pattern, summary)
-
-    if match:
-        # Extract the content between the tags
-        summary = match.group(1)
-        print(summary)
-    else:
-        print("No content found between <arabic> and </arabic> tags.")
-        summary = ' '
+    imagePathsFull= getImagesFromFile(file)
+    fullSummary = ''
+    for img in imagePathsFull:
+        imagePaths = [img]
+        content=[{"type":"text"
+                ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , The arabic summarized text should include all information found in the main text , show the arabic summarized text between <arabic> and </arabic> , the text to summarize is in the images provided"}]
+        content.extend(imagePaths)
+        
+        
+        response = callChatgpt(content)
+        summary = response['choices'][0]['message']['content']
+        summary = handleArabicTagsToSummary(summary)
+        fullSummary = fullSummary + ' ' + summary
+        
+    summary = fullSummary
     return summary
     
     
