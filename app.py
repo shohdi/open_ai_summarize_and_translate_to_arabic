@@ -5,6 +5,7 @@ import openai
 from security.openapi_key import openai_key
 from summarize_pdf_by_image import SummarizePDFByImage
 from summarize_pdf import SummarizePDF
+from conclusion_pdf_by_image import ConclusionPDFByImage
 
 
 # Set your OpenAI API key
@@ -17,6 +18,7 @@ api = Api(app)
 
 api.add_resource(SummarizePDF, '/summarize')
 api.add_resource(SummarizePDFByImage, '/sumimage')
+api.add_resource(ConclusionPDFByImage,'/conimage')
 
 if __name__ == '__main__':
     app.run(debug=True,port=5001)
