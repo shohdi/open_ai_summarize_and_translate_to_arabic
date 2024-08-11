@@ -19,19 +19,34 @@ class ConclusionPDFByImage(Resource):
     def summarize_text_by_image(self,file):
         imagePathsFull= getImagesFromFile(file)
         fullSummary = ''
+        summary = ''
+        ind = 0
         for img in imagePathsFull:
+            ind = ind + 1
             imagePaths = [img]
             content=[{"type":"text"
-                    ,"text":f"Please summarize the following technical text for normal non-technical person and show the output in arabic , The arabic summarized text should include all information found in the main text , show the arabic summarized text between <arabic> and </arabic> , the text to summarize is in the images provided"}]
+                    ,"text":f"Please analyze these images and provide a summary of all information found in them"}]
             content.extend(imagePaths)
-            
-            
+        
+        
             response = callChatgpt(content)
             summary = response['choices'][0]['message']['content']
-            summary = handleArabicTagsToSummary(summary)
-            fullSummary = fullSummary + ' ' + summary
+            fullSummary = fullSummary + ' ' + f'\nPage No : {ind}\n' + ' ' + summary
+
+        summary = fullSummary 
+
+        
+        content =f"write a summary of the following text , if the text have conclusion part then summary should include this conclusion , text : {summary}"
+        response = callChatgpt(content)
+        summary = response['choices'][0]['message']['content']
+
+        content =f"Translate this text to arabic : {summary}"
+        response = callChatgpt(content)
+        summary = response['choices'][0]['message']['content']
+
+        
             
-        summary = fullSummary
+        
         return summary
     
     
